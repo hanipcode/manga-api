@@ -5,13 +5,9 @@ function buildMangaDB() {
   return getMangaList()
     .then((mangaList) => {
       const mangaDB = [];
-      for (let i = 0; i < mangaList.length; i += 1) {
-        getMangaInfo(mangaList[i].identifier).then((mangaInfo) => {
-          mangaDB.push(mangaInfo);
-        });
-      };
-      return mangaDB;
-    })
+      const mangaPromises = mangaList.map((mangaObject) => getMangaInfo(mangaObject.identifier));
+      return Promise.all(mangaPromises)
+    });
 }
 
 function getMangaList() {
@@ -68,5 +64,3 @@ function getAvailableChapter(chapterElements) {
   return availableChapters;
 }
 
-console.time('getManga');
-buildMangaDB().then(mangaDB => console.log(mangaDB));
