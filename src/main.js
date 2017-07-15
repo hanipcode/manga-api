@@ -83,4 +83,3 @@ function getChapterImages(chapterLink) {
     });
 }
 
-getChapterImages('http://komikid.com/manga/detective-conan/997/1');
