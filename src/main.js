@@ -64,3 +64,23 @@ function getAvailableChapter(chapterElements) {
   return availableChapters;
 }
 
+function getChapterImages(chapterLink) {
+  return request(chapterLink)
+    .then((body) => {
+      const chapterImages = [];
+      const $ = cheerio.load(body);
+      const chapterPagesElements = $("#all").children(".img-responsive");
+      chapterPagesElements.each((i, element) => {
+        const imageTitle = $(element).attr("alt");
+        const imageLink = $(element).attr("src");
+        const chapterImageObject = {
+          imageTitle,
+          imageLink,
+        };
+        chapterImages.push(chapterImageObject);
+      })
+      console.log(chapterImages);
+    });
+}
+
+getChapterImages('http://komikid.com/manga/detective-conan/997/1');
