@@ -1,7 +1,8 @@
 const request = require('request-promise');
 const cheerio = require('cheerio');
+const exports = module.exports = {};
 
-function buildMangaDB() {
+export function buildMangaDB() {
   return getMangaList()
     .then((mangaList) => {
       const mangaDB = [];
@@ -10,7 +11,7 @@ function buildMangaDB() {
     });
 }
 
-function getMangaList() {
+export function getMangaList() {
   return request('http://komikid.com/changeMangaList?type=text')
     .then((body) => {
       const mangaList = [];
@@ -30,7 +31,7 @@ function getMangaList() {
     });
 }
 
-function getMangaInfo(mangaIdentifier) {
+export function getMangaInfo(mangaIdentifier) {
   return request(`http://komikid.com/manga/${mangaIdentifier}`)
     .then((body) => {
       const $ = cheerio.load(body);
@@ -49,7 +50,7 @@ function getMangaInfo(mangaIdentifier) {
     });
 }
 
-function getAvailableChapter(chapterElements) {
+export function getAvailableChapter(chapterElements) {
   const availableChapters = [];
   const $ = cheerio;
   chapterElements.each((i, element) => {
@@ -64,7 +65,7 @@ function getAvailableChapter(chapterElements) {
   return availableChapters;
 }
 
-function getChapterImages(chapterLink) {
+export function getChapterImages(chapterLink) {
   return request(chapterLink)
     .then((body) => {
       const chapterImages = [];
@@ -79,7 +80,6 @@ function getChapterImages(chapterLink) {
         };
         chapterImages.push(chapterImageObject);
       })
-      console.log(chapterImages);
     });
 }
 
