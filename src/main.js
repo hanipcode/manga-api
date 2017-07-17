@@ -1,17 +1,42 @@
 const request = require('request-promise');
 const cheerio = require('cheerio');
-const exports = module.exports = {};
 
-export function buildMangaDB() {
+function delayRequest(delay = 2000) {
+  return new Promise((resolve, reject) => {
+    console.log('delayed');
+    setTimeout(() => resolve(), delay);
+  })
+}
+
+function buildMangaDBSequentially() {
   return getMangaList()
     .then((mangaList) => {
       const mangaDB = [];
-      const mangaPromises = mangaList.map((mangaObject) => getMangaInfo(mangaObject.identifier));
+      const totalManga = mangaList.length;
+      return mangaList.reduce((sequence, mangaObject) => {
+        return sequence
+          .then(() => getMangaInfo(mangaObject.identifier))
+          .then(() => console.log('done downloading', mangaObject.title));
+      }, Promise.resolve());
+    });
+}
+
+function buildMangaDB() {
+  return getMangaList()
+    .then((mangaList) => {
+      const mangaDB = [];
+      const totalManga = mangaList.length;
+      const mangaPromises = mangaList.map((mangaObject) => {
+        getMangaInfo(mangaObject.identifier)
+          .then(() => {
+            console.log('done downloading', mangaObject.title);
+          });
+      });
       return Promise.all(mangaPromises)
     });
 }
 
-export function getMangaList() {
+function getMangaList() {
   return request('http://komikid.com/changeMangaList?type=text')
     .then((body) => {
       const mangaList = [];
@@ -28,10 +53,14 @@ export function getMangaList() {
         mangaList.push(mangaObject);
       });
       return mangaList;
-    });
+    })
+    .catch((err) => {
+      console.log('something went wrong when try to get manga list', err);
+      throw err;
+    })
 }
 
-export function getMangaInfo(mangaIdentifier) {
+function getMangaInfo(mangaIdentifier, retryCount = 0) {
   return request(`http://komikid.com/manga/${mangaIdentifier}`)
     .then((body) => {
       const $ = cheerio.load(body);
@@ -39,33 +68,52 @@ export function getMangaInfo(mangaIdentifier) {
       const mangaTitle = $('.img-responsive').attr('alt');
       const mangaTotalChapter = $('.chapters h5 a').length;
       const chapterElements = $('.chapters h5 a');
-      const availableChapters = getAvailableChapter(chapterElements);
+      const chapterPages = getAvailableChapter(chapterElements);
       const mangaInfo = {
         mangaTitle,
         mangaCover,
         mangaTotalChapter,
-        availableChapters,
+        chapterPages,
       }
       return mangaInfo;
-    });
+    })
+    .catch((err) => {
+      if (retryCount > 0) {
+        console.log('Something went wrong in getting MangaInfo', err);
+        throw err;
+      } else {
+        console.log('Something Went Wrong in Getting Manga Info');
+        console.log('trying to Retry...');
+        const newRetryCount = retryCount + 1 || 2;
+        delayRequest(5000)
+          .then(() => getMangaInfo(mangaIdentifier, 2))
+          .catch((err) => {
+            console.log('error while retrying', err);
+            throw err;
+          });
+      }
+    })
 }
 
-export function getAvailableChapter(chapterElements) {
+
+function getAvailableChapter(chapterElements) {
   const availableChapters = [];
   const $ = cheerio;
   chapterElements.each((i, element) => {
     const chapterNumber = $(element).siblings('em').text();
     const chapterLink = $(element).attr('href');
+    const chapterPages = getChapterImages(chapterLink);
     const chapterObject = {
       chapterNumber,
       chapterLink,
+      chapterPages,
     };
     availableChapters.push(chapterObject);
   });
   return availableChapters;
 }
 
-export function getChapterImages(chapterLink) {
+function getChapterImages(chapterLink, retryCount = 0) {
   return request(chapterLink)
     .then((body) => {
       const chapterImages = [];
@@ -80,6 +128,24 @@ export function getChapterImages(chapterLink) {
         };
         chapterImages.push(chapterImageObject);
       })
+      return chapterImages;
+    })
+    .catch((err) => {
+      if (retryCount > 0) {
+        console.log('Something went wrong in getting MangaInfo', err);
+        throw err;
+      } else {
+        console.log('Something Went Wrong in Getting Manga Info');
+        console.log('trying to Retry...');
+        const newRetryCount = retryCount + 1 || 2;
+        delayRequest(5000)
+          .then(() => getChapterImages(chapterLink, 2))
+          .catch((err) => {
+            console.log('error while retrying', err);
+            throw err;
+          });
+      }
     });
 }
 
+buildMangaDBSequentially();
